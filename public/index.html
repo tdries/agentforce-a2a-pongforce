@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PONGFORCE — Agent vs Agent</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg:      #2B4560;
+      --bg2:     #1e3347;
+      --bg3:     #152838;
+      --accent:  #9B59FF;
+      --red:     #FF5FAD;
+      --text:    #fff;
+      --text2:   #9bb5cf;
+      --text3:   #5f8aad;
+      --border:  rgba(155,89,255,0.2);
+      --border2: rgba(255,255,255,0.07);
+    }
+
+    body {
+      font-family: 'Source Sans 3', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── NAV ──────────────────────────────── */
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(21,40,56,0.93);
+      backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 40px;
+      height: 60px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .nav-logo img { height: 28px; display: block; }
+    .nav-links { list-style: none; display: flex; align-items: center; gap: 2px; }
+    .nav-links a {
+      color: var(--text2); text-decoration: none; font-size: 13px; font-weight: 500;
+      padding: 7px 14px; border-radius: 7px;
+      transition: color .2s, background .2s;
+    }
+    .nav-links a:hover { color: var(--text); background: rgba(255,255,255,0.06); }
+    .nav-cta { background: #fff !important; color: var(--bg3) !important; font-weight: 700 !important; }
+
+    /* ── PAGE HEADER ──────────────────────── */
+    .page-header {
+      padding: 32px 40px 24px;
+      display: flex; align-items: flex-start; justify-content: space-between;
+      border-bottom: 1px solid var(--border2);
+    }
+    .title-row {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+    }
+    .sf-logo {
+      height: 36px;
+      display: block;
+    }
+    .page-header h1 {
+      font-size: clamp(28px, 3.5vw, 46px);
+      font-weight: 800; letter-spacing: -0.025em; line-height: 1;
+    }
+    .page-header h1 .blue { color: var(--accent); }
+    .page-header h1 .red  { color: var(--red); }
+    .page-header .sub { font-size: 14px; color: var(--text2); margin-top: 8px; }
+
+    .rally-box {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: 14px; padding: 12px 28px; text-align: center; flex-shrink: 0;
+    }
+    .rally-lbl { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--text3); }
+    .rally-num { font-size: 40px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1; margin-top: 2px; }
+
+    /* ── ARENA ────────────────────────────── */
+    .arena {
+      position: relative;
+      height: 230px;
+      display: flex;
+      align-items: center;
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border2);
+      overflow: hidden;
+    }
+
+    /* Subtle decorative background dots */
+    .arena::before {
+      content: '';
+      position: absolute; inset: 0;
+      background-image:
+        radial-gradient(circle, rgba(155,89,255,0.06) 1.5px, transparent 1.5px);
+      background-size: 28px 28px;
+      pointer-events: none;
+    }
+
+    /* Player zones */
+    .player-zone {
+      width: 14%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      position: relative;
+      z-index: 2;
+    }
+    .player-zone .pname {
+      font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em;
+    }
+    .player-zone.left  .pname { color: var(--accent); }
+    .player-zone.right .pname { color: var(--red); }
+    .player-zone .pid { font-size: 9px; color: var(--text3); font-family: 'JetBrains Mono', monospace; }
+
+    .paddle-wrap {
+      width: 72px; height: 72px;
+      border-radius: 50%;
+      overflow: hidden;
+      border: 3px solid;
+      box-shadow: 0 0 0 0 transparent;
+      transition: box-shadow .3s;
+    }
+    .player-zone.left  .paddle-wrap { border-color: var(--accent); transform-origin: center bottom; }
+    .player-zone.right .paddle-wrap { border-color: var(--red);    transform-origin: center bottom; }
+    .player-zone.left.hit  .paddle-wrap {
+      animation: swingL .48s ease-out;
+      box-shadow: 0 0 26px rgba(155,89,255,0.75);
+    }
+    .player-zone.right.hit .paddle-wrap {
+      animation: swingR .48s ease-out;
+      box-shadow: 0 0 26px rgba(255,95,173,0.75);
+    }
+    .paddle-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+    @keyframes swingL {
+      0%   { transform: translateX(0)    scale(1);    }
+      28%  { transform: translateX(22px) scale(1.12); }
+      65%  { transform: translateX(6px)  scale(1.03); }
+      100% { transform: translateX(0)    scale(1);    }
+    }
+    @keyframes swingR {
+      0%   { transform: translateX(0)     scale(1);    }
+      28%  { transform: translateX(-22px) scale(1.12); }
+      65%  { transform: translateX(-6px)  scale(1.03); }
+      100% { transform: translateX(0)     scale(1);    }
+    }
+
+    /* Table zone */
+    .table-zone {
+      flex: 1; height: 100%;
+      position: relative;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    .ping-table {
+      width: 82%; height: 106px;
+      background: #1c6e1c;
+      border: 3px solid #fff;
+      border-radius: 3px;
+      position: relative;
+      box-shadow:
+        0 6px 30px rgba(0,0,0,0.5),
+        inset 0 1px 0 rgba(255,255,255,0.12),
+        inset 0 0 40px rgba(0,0,0,0.2);
+    }
+    /* Center line */
+    .ping-table::before {
+      content: '';
+      position: absolute;
+      top: -3px; bottom: -3px;
+      left: calc(50% - 1.5px); width: 3px;
+      background: #fff;
+    }
+    /* Service box lines */
+    .ping-table::after {
+      content: '';
+      position: absolute;
+      top: 50%; left: 0; right: 0;
+      height: 2px;
+      background: rgba(255,255,255,0.35);
+    }
+
+    /* Net */
+    .table-net {
+      position: absolute;
+      top: -18px; bottom: -18px;
+      left: 50%;
+      width: 8px;
+      transform: translateX(-50%);
+      display: flex; flex-direction: column; align-items: center;
+      z-index: 4;
+    }
+    .net-post {
+      width: 6px; height: 18px;
+      background: #aaa;
+      border-radius: 2px;
+      flex-shrink: 0;
+    }
+    .net-mesh {
+      flex: 1; width: 3px;
+      background: repeating-linear-gradient(
+        to bottom,
+        #999 0px, #999 3px,
+        transparent 3px, transparent 7px
+      );
+    }
+
+    /* Last-shot bar above the arena */
+    #tableMsg {
+      padding: 10px 40px;
+      background: rgba(0,0,0,0.15);
+      border-bottom: 1px solid var(--border2);
+      font-family: 'Source Sans 3', sans-serif;
+      font-size: 28px; font-weight: 600;
+      color: var(--text);
+      line-height: 1.4;
+      min-height: 80px;
+      display: flex; align-items: center;
+      word-break: break-word;
+      white-space: pre-wrap;
+    }
+    #tableMsg:empty { display: none; }
+
+    /* Ball */
+    #theBall {
+      position: absolute;
+      width: 20px; height: 20px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 30%, #fffde7, #FFD166 55%, #d4900a);
+      box-shadow: 0 3px 10px rgba(0,0,0,0.55), inset 0 1px 3px rgba(255,255,255,0.65);
+      z-index: 10;
+      opacity: 0;
+      pointer-events: none;
+    }
+    #theBall.idle { opacity: 0.45; }
+    #theBall.live { opacity: 1; }
+
+    /* ── CONTROLS ─────────────────────────── */
+    .controls-bar {
+      padding: 18px 40px;
+      display: flex; align-items: center; gap: 16px;
+      border-bottom: 1px solid var(--border2);
+      flex-wrap: wrap;
+    }
+    .btn {
+      border: none; border-radius: 10px; padding: 11px 26px;
+      font-family: 'Source Sans 3', sans-serif;
+      font-size: 14px; font-weight: 700; cursor: pointer; color: #fff;
+      transition: opacity .15s, transform .1s, box-shadow .15s;
+    }
+    .btn:active { transform: scale(.97); }
+    .btn:disabled { opacity: .4; cursor: not-allowed; }
+    .btn-start { background: var(--accent); box-shadow: 0 4px 14px rgba(155,89,255,.35); }
+    .btn-start:hover { box-shadow: 0 6px 20px rgba(155,89,255,.5); }
+    .btn-stop { background: rgba(255,95,173,.12); border: 1px solid rgba(255,95,173,.4); color: var(--red); }
+    .btn-stop:hover { background: rgba(255,95,173,.22); }
+    .max-rallies { display: flex; align-items: center; gap: 8px; }
+    .max-rallies label { font-size: 13px; color: var(--text2); font-weight: 500; }
+    .max-rallies input {
+      width: 64px; background: var(--bg3); border: 1px solid var(--border);
+      border-radius: 8px; color: var(--text); padding: 9px 10px;
+      font-size: 13px; text-align: center; font-family: 'Source Sans 3', sans-serif;
+    }
+    .max-rallies input:focus { outline: none; border-color: var(--accent); }
+    .spinner {
+      width: 15px; height: 15px;
+      border: 2px solid var(--accent); border-top-color: transparent;
+      border-radius: 50%; animation: spin .9s linear infinite; display: inline-block;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spin-txt { font-size: 13px; color: var(--text2); font-weight: 500; }
+
+    /* ── TERMINALS ───────────────────────── */
+    .terminals {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .terminal {
+      display: flex; flex-direction: column;
+      border-top: 2px solid;
+      min-height: 340px;
+    }
+    .terminal.t1 { border-color: var(--accent); border-right: 1px solid var(--border2); }
+    .terminal.t2 { border-color: var(--red); }
+
+    .term-header {
+      padding: 12px 18px 10px;
+      border-bottom: 1px solid var(--border2);
+      display: flex; align-items: center; gap: 10px;
+      background: rgba(0,0,0,0.12);
+      flex-shrink: 0;
+    }
+    .term-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .t1 .term-dot { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+    .t2 .term-dot { background: var(--red);    box-shadow: 0 0 6px var(--red); }
+    .term-agent { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
+    .t1 .term-agent { color: var(--accent); }
+    .t2 .term-agent { color: var(--red); }
+    .term-id-hdr {
+      font-size: 10px; color: var(--text3);
+      font-family: 'JetBrains Mono', monospace;
+      margin-left: auto;
+    }
+
+    .term-body {
+      flex: 1; overflow-y: auto; padding: 10px 14px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 15px; line-height: 1.65;
+    }
+    .term-body::-webkit-scrollbar { width: 4px; }
+    .term-body::-webkit-scrollbar-thumb { background: rgba(155,89,255,.18); border-radius: 2px; }
+
+    .term-empty { color: var(--text3); padding: 28px 0; text-align: center; font-size: 11px; }
+
+    .term-entry { margin-bottom: 8px; }
+
+    .term-line {
+      display: flex; align-items: baseline; gap: 8px;
+      padding: 6px 10px; border-radius: 6px;
+    }
+    .t1 .term-line { background: rgba(155,89,255,0.07); }
+    .t2 .term-line { background: rgba(255,95,173,0.07); }
+
+    .term-prompt { font-size: 11px; font-weight: 700; flex-shrink: 0; }
+    .t1 .term-prompt { color: var(--accent); }
+    .t2 .term-prompt { color: var(--red); }
+
+    .term-msg-txt { color: var(--text); flex: 1; word-break: break-word; white-space: pre-wrap; font-size: 15px; }
+    .term-time { font-size: 10px; color: var(--text3); flex-shrink: 0; margin-left: 6px; }
+
+    details.term-raw { margin-top: 3px; padding-left: 10px; }
+    details.term-raw summary {
+      font-size: 10px; color: var(--text3); cursor: pointer;
+      list-style: none; display: flex; align-items: center; gap: 5px;
+      user-select: none; padding: 2px 0;
+    }
+    details.term-raw summary::-webkit-details-marker { display: none; }
+    details.term-raw summary:hover { color: var(--text2); }
+    details.term-raw summary::before { content: '▶'; font-size: 8px; transition: transform .15s; }
+    details.term-raw[open] summary::before { transform: rotate(90deg); }
+    details.term-raw pre {
+      margin-top: 5px;
+      background: var(--bg3); border: 1px solid var(--border);
+      border-radius: 6px; padding: 8px 10px;
+      font-size: 10px; color: var(--text2);
+      overflow-x: auto; max-height: 160px; overflow-y: auto;
+      white-space: pre-wrap;
+    }
+
+    .term-sys {
+      font-size: 11px; color: var(--text3); padding: 3px 10px;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .term-sys::before { content: '//'; opacity: .5; }
+    .term-sys.err { color: #ffb3d9; }
+
+    /* ── FOOTER ──────────────────────────── */
+    footer {
+      border-top: 1px solid var(--border2);
+      padding: 16px 40px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .footer-copy { font-size: 12px; color: var(--text3); }
+    .footer-badge {
+      font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em;
+      color: var(--accent); background: rgba(155,89,255,.1);
+      border: 1px solid rgba(155,89,255,.2); padding: 4px 10px; border-radius: 6px;
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a class="nav-logo" href="#"><img src="/logo.png" alt="Biztory" /></a>
+  <ul class="nav-links">
+    <li><a href="#">Solutions &#9660;</a></li>
+    <li><a href="#">Products &#9660;</a></li>
+    <li><a href="#">Resources &#9660;</a></li>
+    <li><a href="#">About</a></li>
+    <li><a href="#" class="nav-cta">Get in touch</a></li>
+  </ul>
+</nav>
+
+<!-- PAGE HEADER -->
+<div class="page-header">
+  <div>
+    <div class="title-row">
+      <img src="/sf-logo.png" alt="Salesforce" class="sf-logo" />
+      <h1><span class="blue">PONG</span><span class="red">FORCE</span></h1>
+    </div>
+    <p class="sub">Agent vs Agent &middot; Powered by Salesforce Agentforce</p>
+  </div>
+  <div class="rally-box">
+    <div class="rally-lbl">Rally</div>
+    <div class="rally-num" id="rallyCount">0</div>
+  </div>
+</div>
+
+<div id="tableMsg"></div>
+
+<!-- ARENA -->
+<div class="arena" id="arena">
+
+  <!-- Left player -->
+  <div class="player-zone left" id="zone1">
+    <div class="paddle-wrap" id="paddleWrap1">
+      <img src="/agentforce-icon.jpg" alt="Agent Blue" />
+    </div>
+    <div class="pname">Agent Blue</div>
+    <div class="pid" id="pid1"></div>
+  </div>
+
+  <!-- Table -->
+  <div class="table-zone">
+    <div class="ping-table" id="pingTable">
+      <div class="table-net">
+        <div class="net-post"></div>
+        <div class="net-mesh"></div>
+        <div class="net-post"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right player -->
+  <div class="player-zone right" id="zone2">
+    <div class="paddle-wrap" id="paddleWrap2">
+      <img src="/agentforce-icon.jpg" alt="Agent Red" />
+    </div>
+    <div class="pname">Agent Red</div>
+    <div class="pid" id="pid2"></div>
+  </div>
+
+  <!-- Ball (absolutely positioned inside arena) -->
+  <div id="theBall"></div>
+</div>
+
+<!-- CONTROLS -->
+<div class="controls-bar" id="controls">
+  <button class="btn btn-start" onclick="startGame()">&#127955; Start Game</button>
+  <div class="max-rallies">
+    <label>Max rallies:</label>
+    <input type="number" id="maxRallies" value="10" min="2" max="50" />
+  </div>
+</div>
+
+<!-- TERMINALS -->
+<div class="terminals">
+  <div class="terminal t1">
+    <div class="term-header">
+      <div class="term-dot"></div>
+      <span class="term-agent">Agent Blue</span>
+      <span class="term-id-hdr" id="termId1"></span>
+    </div>
+    <div class="term-body" id="term1">
+      <div class="term-empty" id="termEmpty1">// waiting for game to start…</div>
+    </div>
+  </div>
+  <div class="terminal t2">
+    <div class="term-header">
+      <div class="term-dot"></div>
+      <span class="term-agent">Agent Red</span>
+      <span class="term-id-hdr" id="termId2"></span>
+    </div>
+    <div class="term-body" id="term2">
+      <div class="term-empty" id="termEmpty2">// waiting for game to start…</div>
+    </div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <span class="footer-copy">&copy; 2025 Biztory &mdash; Pongforce Demo</span>
+  <span class="footer-badge">Powered by Agentforce</span>
+</footer>
+
+<script>
+let PLAYER1_ID, PLAYER2_ID, API;
+
+async function loadConfig() {
+  const cfg = await fetch("/api/config").then(r => r.json());
+  PLAYER1_ID = cfg.player1Id;
+  PLAYER2_ID = cfg.player2Id;
+  API = cfg.apiBase;
+  const suffix = id => "..." + id.slice(-7);
+  document.getElementById('pid1').textContent = suffix(PLAYER1_ID);
+  document.getElementById('pid2').textContent = suffix(PLAYER2_ID);
+  document.getElementById('termId1').textContent = PLAYER1_ID;
+  document.getElementById('termId2').textContent = PLAYER2_ID;
+}
+
+let running = false;
+
+// ── BALL ──────────────────────────────────────────
+
+function getBallState() {
+  const arena = document.getElementById('arena');
+  const ball  = document.getElementById('theBall');
+  return {
+    aw: arena.offsetWidth,
+    ah: arena.offsetHeight,
+    br: ball.offsetWidth / 2
+  };
+}
+
+function initBall() {
+  const ball = document.getElementById('theBall');
+  const { aw, ah, br } = getBallState();
+  ball.style.left = (aw / 2 - br) + 'px';
+  ball.style.top  = (ah / 2 - br) + 'px';
+  ball.className  = 'idle';
+}
+
+// Parse response text to influence ball physics
+function analyzeBall(text) {
+  const t = (text || '').toLowerCase();
+  let duration  = 1400;  // ms — default
+  let arcMult   = 1.0;   // 1 = normal arc, >1 = higher, <1 = flatter
+  let bounceOff = 0;     // shift bounce X as fraction of arena width
+
+  // ── Speed ──
+  if (/\b(smash|slam|blast|rocket|fast|quick|power|hard|full.?force|spike|forehand)\b/.test(t))
+    duration = 800;
+  else if (/\b(slow|gently|soft|easy|lob|float|leisurely|careful|dink|feather)\b/.test(t))
+    duration = 2100;
+
+  // ── Arc / spin ──
+  if (/\b(spin|topspin|backspin|curve|swerve|slice|effect|side.?spin|loop)\b/.test(t))
+    arcMult = 1.6;
+  else if (/\b(flat|low|drive|direct|straight|line|punch)\b/.test(t))
+    arcMult = 0.55;
+
+  // ── Bounce location ──
+  if (/\b(corner|edge|wide|sideline|extreme|angle)\b/.test(t))
+    bounceOff = 0.07;
+  else if (/\b(center|middle|body|straight)\b/.test(t))
+    bounceOff = -0.06;
+
+  return { duration, arcMult, bounceOff };
+}
+
+function updateTableMsg(text) {
+  const el = document.getElementById('tableMsg');
+  if (!el) return;
+  el.textContent = text;
+}
+
+async function setBall(side, playing, text) {
+  const ball = document.getElementById('theBall');
+  ball.getAnimations().forEach(a => a.cancel());
+
+  const { aw, ah, br } = getBallState();
+  const tableH    = 106;
+  const tableTopY = (ah - tableH) / 2;     // y of table top edge in arena
+  const MID_Y     = ah / 2 - br;           // ball centered vertically
+  const BOUNCE_Y  = tableTopY - br * 2;    // ball sitting on table top
+  const CEN_X     = aw / 2 - br;
+  const LEFT_X    = aw * 0.10 - br;
+  const RIGHT_X   = aw * 0.90 - br;
+
+  if (!playing) {
+    const fromX = parseFloat(ball.style.left) || CEN_X;
+    const anim  = ball.animate([
+      { left: fromX + 'px', top: MID_Y + 'px' },
+      { left: CEN_X  + 'px', top: MID_Y + 'px' }
+    ], { duration: 420, easing: 'ease-out', fill: 'forwards' });
+    await anim.finished;
+    ball.style.left = CEN_X + 'px';
+    ball.style.top  = MID_Y + 'px';
+    ball.getAnimations().forEach(a => a.cancel());
+    ball.className = 'idle';
+    return;
+  }
+
+  ball.className = 'live';
+  const { duration, arcMult, bounceOff } = analyzeBall(text);
+
+  // Peak height above net (smaller number = higher in arena = more arc)
+  const peakY = arcMult >= 1.4 ? 5
+              : arcMult <= 0.65 ? 22
+              : 11;
+
+  // Bounce X: on the receiving half of the table
+  const BOUNCE_X_R = aw * (0.68 + bounceOff) - br;   // right side bounce
+  const BOUNCE_X_L = aw * (0.32 - bounceOff) - br;   // left side bounce
+  const bounceX    = side === 'right' ? BOUNCE_X_R : BOUNCE_X_L;
+
+  // Net is at 50% of arena width
+  const netX = CEN_X;
+
+  const fromX = parseFloat(ball.style.left) || CEN_X;
+  const toX   = side === 'right' ? RIGHT_X : LEFT_X;
+
+  // Hitting paddle lunges immediately; receiving paddle swings just before ball arrives
+  if (side === 'right') {
+    swingPaddle('left');
+    setTimeout(() => swingPaddle('right'), duration * 0.87);
+  } else {
+    swingPaddle('right');
+    setTimeout(() => swingPaddle('left'), duration * 0.87);
+  }
+
+  // Realistic trajectory:
+  //  launch (MID_Y) → peak over net (peakY) → bounce on table (BOUNCE_Y) → paddle (MID_Y)
+  const anim = ball.animate([
+    { left: `${fromX}px`,   top: `${MID_Y}px`,    easing: 'ease-out', offset: 0    },
+    { left: `${netX}px`,    top: `${peakY}px`,     easing: 'ease-in',  offset: 0.38 },
+    { left: `${bounceX}px`, top: `${BOUNCE_Y}px`,  easing: 'ease-out', offset: 0.62 },
+    { left: `${toX}px`,     top: `${MID_Y}px`,                         offset: 1    },
+  ], { duration, fill: 'forwards' });
+
+  await anim.finished;
+  ball.style.left = toX + 'px';
+  ball.style.top  = MID_Y + 'px';
+  ball.getAnimations().forEach(a => a.cancel());
+}
+
+function swingPaddle(which) {
+  const zone = document.getElementById(which === 'left' ? 'zone1' : 'zone2');
+  zone.classList.remove('hit');
+  void zone.offsetWidth;
+  zone.classList.add('hit');
+  setTimeout(() => zone.classList.remove('hit'), 500);
+}
+
+// ── TERMINALS ─────────────────────────────────────
+
+function esc(s) {
+  return String(s)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;');
+}
+
+function addTermMsg(player, text, rawData, type) {
+  const id   = player === 'player1' ? 'term1' : 'term2';
+  const term = document.getElementById(id);
+  const e1   = document.getElementById('termEmpty1');
+  const e2   = document.getElementById('termEmpty2');
+  if (e1) e1.remove();
+  if (e2) e2.remove();
+
+  const time = new Date().toLocaleTimeString();
+
+  if (type === 'sys' || type === 'err') {
+    const d = document.createElement('div');
+    d.className = 'term-sys' + (type === 'err' ? ' err' : '');
+    d.textContent = text;
+    term.appendChild(d);
+  } else {
+    const entry = document.createElement('div');
+    entry.className = 'term-entry';
+
+    const line = document.createElement('div');
+    line.className = 'term-line';
+    line.innerHTML =
+      `<span class="term-prompt">&#8250;</span>` +
+      `<span class="term-msg-txt">${esc(text)}</span>` +
+      `<span class="term-time">${time}</span>`;
+    entry.appendChild(line);
+
+    if (rawData) {
+      const det = document.createElement('details');
+      det.className = 'term-raw';
+      det.innerHTML =
+        `<summary>raw response</summary>` +
+        `<pre>${esc(JSON.stringify(rawData, null, 2))}</pre>`;
+      entry.appendChild(det);
+    }
+    term.appendChild(entry);
+  }
+  term.scrollTop = term.scrollHeight;
+}
+
+function sysMsg(text, isErr) {
+  addTermMsg('player1', text, null, isErr ? 'err' : 'sys');
+  addTermMsg('player2', text, null, isErr ? 'err' : 'sys');
+}
+
+// ── CONTROLS ──────────────────────────────────────
+
+function setRally(n) {
+  document.getElementById('rallyCount').textContent = n;
+}
+
+function showControls(state) {
+  const c = document.getElementById('controls');
+  if (state === 'playing') {
+    c.innerHTML =
+      `<button class="btn btn-stop" onclick="stopGame()">&#9646; Stop Game</button>` +
+      `<div style="display:flex;align-items:center;gap:10px">` +
+      `<div class="spinner"></div><span class="spin-txt">Playing…</span></div>`;
+  } else {
+    const label = state === 'idle' ? '&#127955; Start Game' : '&#128260; Rematch';
+    c.innerHTML =
+      `<button class="btn btn-start" onclick="startGame()">${label}</button>` +
+      `<div class="max-rallies"><label>Max rallies:</label>` +
+      `<input type="number" id="maxRallies" value="10" min="2" max="50"></div>`;
+  }
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+async function api(method, path, body) {
+  const opts = { method, headers: { 'Content-Type': 'application/json' } };
+  if (body) opts.body = JSON.stringify(body);
+  const res  = await fetch(API + path, opts);
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Request failed');
+  return data;
+}
+
+function stopGame() {
+  running = false;
+  showControls('ended');
+  setBall('center', false);
+  sysMsg('Game stopped.');
+}
+
+// ── GAME LOOP ──────────────────────────────────────
+
+async function startGame() {
+  running = true;
+  document.getElementById('term1').innerHTML = '';
+  document.getElementById('term2').innerHTML = '';
+  updateTableMsg('');
+  setRally(0);
+  showControls('playing');
+
+  const maxR = parseInt(document.getElementById('maxRallies')?.value) || 10;
+
+  try {
+    sysMsg('Authenticating & creating sessions…');
+
+    const [s1, s2] = await Promise.all([
+      api('POST', '/session', { agentId: PLAYER1_ID }),
+      api('POST', '/session', { agentId: PLAYER2_ID }),
+    ]);
+
+    // Show session info in each respective terminal
+    addTermMsg('player1', 'session: ' + s1.sessionId, s1, 'msg');
+    addTermMsg('player2', 'session: ' + s2.sessionId, s2, 'msg');
+
+    sysMsg('Both agents ready! Game starts now.');
+    await sleep(300);
+
+    // Player 1 serves
+    let currentText = 'PING';
+    addTermMsg('player1', currentText, null, 'msg');
+    updateTableMsg(currentText);
+
+    // Place ball at left side before first animation
+    const { aw, ah, br } = getBallState();
+    const ball = document.getElementById('theBall');
+    ball.className = 'live';
+    ball.style.left = (aw * 0.10 - br) + 'px';
+    ball.style.top  = (ah / 2  - br) + 'px';
+
+    await setBall('right', true, currentText);
+    setRally(1);
+    await sleep(300);
+
+    const players = [
+      { key: 'player2', session: s2.sessionId, seq: 1 },
+      { key: 'player1', session: s1.sessionId, seq: 1 },
+    ];
+    let turn = 0;
+
+    for (let i = 1; i < maxR; i++) {
+      if (!running) break;
+
+      const p = players[turn % 2];
+      const result = await api('POST', '/message', {
+        sessionId: p.session,
+        text: currentText,
+        sequenceId: p.seq,
+      });
+      p.seq++;
+
+      const response = result.response || '(no response)';
+      addTermMsg(p.key, response, result.raw, 'msg');
+      updateTableMsg(response);
+
+      const toSide = p.key === 'player1' ? 'right' : 'left';
+      await setBall(toSide, true, response);
+      setRally(i + 1);
+
+      currentText = response;
+      turn++;
+
+      if (!running) break;
+      await sleep(200);
+    }
+
+    if (running) sysMsg(`Game complete after ${maxR} rallies!`);
+
+    api('DELETE', `/session/${s1.sessionId}`).catch(() => {});
+    api('DELETE', `/session/${s2.sessionId}`).catch(() => {});
+
+  } catch (err) {
+    sysMsg('Error: ' + err.message, true);
+  }
+
+  running = false;
+  await setBall('center', false);
+  showControls('ended');
+}
+
+// ── INIT ──────────────────────────────────────────
+window.addEventListener('load', async () => { await loadConfig(); initBall(); });
+window.addEventListener('resize', () => { if (!running) initBall(); });
+</script>
+</body>
+</html>

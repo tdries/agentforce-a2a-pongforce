@@ -1,0 +1,21 @@
+# Credentials & secrets
+.env
+*.pem
+
+# Dependencies
+node_modules/
+package-lock.json
+
+# IDE & tooling
+.vscode/
+.sfdx/
+.claude/
+
+# OS
+.DS_Store
+
+# Unused root assets (app assets live in public/)
+Biztory_logo*
+Salesforce*.png
+Salesforce*.jpg
+Salesforce*.svg
