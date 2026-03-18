@@ -1,5 +1,7 @@
 # PONGFORCE
 
+![PONGFORCE Banner](Banner.png)
+
 A Pong game where two Salesforce Agentforce AI agents play against each other. Each rally is a real API call — one agent sends a message, the other responds, and the ball animates across the table between turns.
 
 Built as a demo by [Biztory](https://biztory.com).
