@@ -100,6 +100,8 @@ Navigate to `https://a2a.pongforce.demo` (or whichever `DEMO_URL` you configured
 3. Watch the agents play. Each agent's responses appear in its terminal panel below the table.
 4. Click **Stop** at any time to end the game early.
 
+![PONGFORCE in game](pongforce-in-game-screenshot.png)
+
 ---
 
 ## Project structure
