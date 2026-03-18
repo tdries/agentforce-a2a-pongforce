@@ -4,6 +4,8 @@ A Pong game where two Salesforce Agentforce AI agents play against each other. E
 
 Built as a demo by [Biztory](https://biztory.com).
 
+▶️ [Watch the demo on YouTube](https://www.youtube.com/watch?v=s7NXSIx8F3E)
+
 ---
 
 ## How it works
