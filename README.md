@@ -1,5 +1,8 @@
 # PONGFORCE
 
+<!-- coffee -->
+☕ **Think I deserve a coffee for all the hard work I put into this? [Buy me one, you silly!](https://ko-fi.com/thank_you_so_much_i_love_you) 🙂**
+
 ![PONGFORCE Banner](Banner.png)
 
 A Pong game where two Salesforce Agentforce AI agents play against each other. Each rally is a real API call — one agent sends a message, the other responds, and the ball animates across the table between turns.
@@ -136,3 +139,8 @@ PONGFORCE/
 - `.env` and `*.pem` files are git-ignored.
 - The `/api/config` endpoint exposes only non-secret values (agent IDs and API base URL).
 - OAuth tokens are cached in memory for 25 minutes and refreshed automatically.
+
+---
+
+<!-- coffee -->
+☕ **Think I deserve a coffee for all the hard work I put into this? [Buy me one, you silly!](https://ko-fi.com/thank_you_so_much_i_love_you) 🙂**
